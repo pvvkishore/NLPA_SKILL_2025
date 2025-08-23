@@ -1,0 +1,16 @@
+{
+  "total_pages_scraped": 71,
+  "total_words": 41923,
+  "average_words_per_page": 590.46,
+  "content_type_distribution": {
+    "blog_post": 12,
+    "product_page": 23
+  },
+  "word_count_stats": {
+    "min": 16,
+    "max": 6116,
+    "median": 282
+  },
+  "failed_pages": 0,
+  "success_rate": "100.0%"
+}
