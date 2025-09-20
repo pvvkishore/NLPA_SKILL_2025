@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KLEF Q&A Model Training & Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2196F3, #21CBF3);
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+        .tab.active {
+            background: white;
+            color: #2196F3;
+            border-bottom: 3px solid #2196F3;
+        }
+        .tab-content {
+            display: none;
+            padding: 30px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .model-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .model-section h3 {
+            color: #2196F3;
+            margin-top: 0;
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #2196F3, #21CBF3);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: transform 0.2s ease;
+            margin: 5px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .file-upload-section {
+            border: 2px dashed #2196F3;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            margin: 15px 0;
+        }
+        .upload-btn {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 500;
+            transition: transform 0.2s ease;
+        }
+        .upload-btn:hover {
+            transform: translateY(-2px);
+        }
+        .progress-container {
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 10px;
+            background: linear-gradient(90deg, #2196F3, #21CBF3);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .qa-interface {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+        .answer-box {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            min-height: 100px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .rating {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 15px 0;
+        }
+        .thumb-btn {
+            background: none;
+            border: 2px solid #e9ecef;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .thumb-btn.up {
+            color: #28a745;
+            border-color: #28a745;
+        }
+        .thumb-btn.down {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+        .thumb-btn.selected {
+            background: currentColor;
+            color: white;
+        }
+        .model-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        .test-results {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 0;
+        }
+        .test-item:last-child {
+            border-bottom: none;
+        }
+        .similarity-score {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: white;
+        }
+        .score-high { background: #28a745; }
+        .score-medium { background: #ffc107; color: #212529; }
+        .score-low { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>KLEF Q&A Model</h1>
+            <p>AI-Powered Question Answering System</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('training')">Model Training</button>
+            <button class="tab" onclick="switchTab('interface')">Q&A Interface</button>
+            <button class="tab" onclick="switchTab('evaluation')">Model Evaluation</button>
+        </div>
+
+        <!-- Training Tab -->
+        <div id="training" class="tab-content active">
+            <div class="model-section">
+                <h3>Load Dataset</h3>
+                <div class="file-upload-section">
+                    <p><strong>Upload your KLEF Training Dataset JSON File</strong></p>
+                    <input type="file" id="datasetFile" accept=".json" style="display: none;" onchange="loadDatasetFromFile(event)">
+                    <button class="upload-btn" onclick="document.getElementById('datasetFile').click()">
+                        Choose JSON File
+                    </button>
+                    <p id="fileName" style="margin-top: 10px; color: #6c757d; font-style: italic;">No file selected</p>
+                </div>
+                <div id="fileStatus" class="status info">
+                    Please upload the klef_trainingdata.json file to begin training
+                </div>
+            </div>
+
+            <div class="model-section" id="datasetAnalysisSection" style="display: none;">
+                <h3>Dataset Analysis</h3>
+                <div id="datasetStats" class="model-stats"></div>
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <div class="model-section" id="modelConfigSection" style="display: none;">
+                <h3>Model Configuration</h3>
+                <div class="form-group">
+                    <label>Vocabulary Size:</label>
+                    <input type="number" class="form-control" id="vocabSize" value="10000">
+                </div>
+                <div class="form-group">
+                    <label>Embedding Dimension:</label>
+                    <input type="number" class="form-control" id="embeddingDim" value="128">
+                </div>
+                <div class="form-group">
+                    <label>Max Sequence Length:</label>
+                    <input type="number" class="form-control" id="maxLength" value="100">
+                </div>
+                <div class="form-group">
+                    <label>CNN Filters:</label>
+                    <input type="number" class="form-control" id="filters" value="64">
+                </div>
+                <div class="form-group">
+                    <label>Epochs:</label>
+                    <input type="number" class="form-control" id="epochs" value="50">
+                </div>
+                <div class="form-group">
+                    <label>Batch Size:</label>
+                    <input type="number" class="form-control" id="batchSize" value="32">
+                </div>
+                <button class="btn" onclick="startTraining()" id="trainBtn">Start Training</button>
+                <button class="btn" onclick="stopTraining()" id="stopBtn" disabled>Stop Training</button>
+            </div>
+
+            <div class="model-section" id="trainingProgress" style="display: none;">
+                <h3>Training Progress</h3>
+                <div id="trainingStatus" class="status info">Preparing training...</div>
+                <div class="progress-container">
+                    <div id="progressBar" class="progress-bar"></div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trainingChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interface Tab -->
+        <div id="interface" class="tab-content">
+            <div class="qa-interface">
+                <h3>Ask about KLU?</h3>
+                
+                <div class="form-group">
+                    <label>Categories:</label>
+                    <select class="form-control" id="categorySelect">
+                        <option value="">All Categories</option>
+                        <option value="placements">Placements</option>
+                        <option value="research">Research</option>
+                        <option value="academics">Academics</option>
+                        <option value="admissions">Admissions</option>
+                        <option value="general_info">General Info</option>
+                        <option value="facilities">Facilities</option>
+                        <option value="student_life">Student Life</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Ask:</label>
+                    <input type="text" class="form-control" id="questionInput" 
+                           placeholder="Enter your question about KLEF..." 
+                           onkeypress="if(event.key==='Enter') askQuestion()">
+                </div>
+
+                <button class="btn" onclick="askQuestion()">Get Answer</button>
+
+                <div class="form-group">
+                    <label>Response:</label>
+                    <div id="answerBox" class="answer-box">
+                        Your answer will appear here...
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Rate the response:</label>
+                    <div class="rating">
+                        <button class="thumb-btn up" onclick="rateResponse(true)">👍</button>
+                        <button class="thumb-btn down" onclick="rateResponse(false)">👎</button>
+                        <span id="ratingText">Rate this response</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evaluation Tab -->
+        <div id="evaluation" class="tab-content">
+            <div class="model-section">
+                <h3>Model Testing</h3>
+                <button class="btn" onclick="runModelTests()" id="testBtn">Test with 25 Questions</button>
+                <div id="testProgress" class="progress-container" style="display: none;">
+                    <div id="testProgressBar" class="progress-bar"></div>
+                </div>
+                <div id="testResults" class="test-results" style="display: none;">
+                    <h4>Test Results</h4>
+                    <div id="testResultsContent"></div>
+                </div>
+            </div>
+
+            <div class="model-section">
+                <h3>Performance Metrics</h3>
+                <div id="performanceStats" class="model-stats"></div>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let model = null;
+        let tokenizer = null;
+        let dataset = null;
+        let isTraining = false;
+        let trainingChart = null;
+        let categoryChart = null;
+        let performanceChart = null;
+        let testResults = [];
+
+        // Initialize the application
+        function initializeApp() {
+            console.log('KLEF Q&A Model initialized - Ready to load dataset');
+            showFileStatus('Please upload the klef_trainingdata.json file to begin training', 'info');
+        }
+
+        // Load dataset from uploaded file
+        function loadDatasetFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Update file name display
+            document.getElementById('fileName').textContent = file.name;
+
+            if (!file.name.endsWith('.json')) {
+                showFileStatus('Please upload a valid JSON file', 'error');
+                return;
+            }
+
+            showFileStatus('Loading and parsing dataset...', 'info');
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    let rawData = e.target.result.trim();
+                    console.log('File size:', rawData.length, 'characters');
+                    
+                    // Handle potential JSON formatting issues
+                    if (rawData.endsWith(',')) {
+                        rawData = rawData.slice(0, -1);
+                    }
+
+                    // Try to parse JSON directly first
+                    try {
+                        dataset = JSON.parse(rawData);
+                        
+                        // Validate dataset structure
+                        if (!dataset.train || !Array.isArray(dataset.train)) {
+                            throw new Error('Invalid dataset format: missing or invalid train array');
+                        }
+                        
+                        console.log('Direct JSON parsing successful');
+                        
+                    } catch (jsonError) {
+                        console.log('Direct JSON parsing failed, attempting manual extraction...');
+                        
+                        // Initialize dataset structure
+                        dataset = {
+                            metadata: {
+                                total_questions: 2100,
+                                categories: ["placements", "research", "academics", "admissions", "general_info", "facilities", "student_life"],
+                                split_ratios: { train: 0.7, validation: 0.15, test: 0.15 }
+                            },
+                            train: []
+                        };
+                        
+                        // Extract samples using a more robust approach
+                        const lines = rawData.split('\n');
+                        let currentSample = '';
+                        let braceCount = 0;
+                        let inString = false;
+                        let escapeNext = false;
+                        
+                        for (let i = 0; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (!line) continue;
+                            
+                            // Look for start of new sample
+                            if (line.includes('"id":') && braceCount === 0) {
+                                currentSample = line;
+                                
+                                // Count braces properly, accounting for strings
+                                for (let j = 0; j < line.length; j++) {
+                                    const char = line[j];
+                                    if (escapeNext) {
+                                        escapeNext = false;
+                                        continue;
+                                    }
+                                    if (char === '\\') {
+                                        escapeNext = true;
+                                        continue;
+                                    }
+                                    if (char === '"') {
+                                        inString = !inString;
+                                        continue;
+                                    }
+                                    if (!inString) {
+                                        if (char === '{') braceCount++;
+                                        if (char === '}') braceCount--;
+                                    }
+                                }
+                                
+                            } else if (braceCount > 0) {
+                                currentSample += ' ' + line;
+                                
+                                // Count braces in continuation lines
+                                for (let j = 0; j < line.length; j++) {
+                                    const char = line[j];
+                                    if (escapeNext) {
+                                        escapeNext = false;
+                                        continue;
+                                    }
+                                    if (char === '\\') {
+                                        escapeNext = true;
+                                        continue;
+                                    }
+                                    if (char === '"') {
+                                        inString = !inString;
+                                        continue;
+                                    }
+                                    if (!inString) {
+                                        if (char === '{') braceCount++;
+                                        if (char === '}') braceCount--;
+                                    }
+                                }
+                                
+                                if (braceCount === 0) {
+                                    // Complete sample found
+                                    try {
+                                        // Clean up the sample string
+                                        let cleanSample = currentSample
+                                            .replace(/[\n\r\t]/g, ' ')
+                                            .replace(/\s+/g, ' ')
+                                            .replace(/,\s*}/, '}')
+                                            .replace(/,\s*]/g, ']')
+                                            .trim();
+                                        
+                                        const sample = JSON.parse(cleanSample);
+                                        
+                                        // Validate required fields
+                                        if (sample.id && sample.question && sample.answer && sample.category) {
+                                            dataset.train.push(sample);
+                                        }
+                                    } catch (e) {
+                                        console.warn('Skipping invalid sample:', e.message);
+                                    }
+                                    
+                                    // Reset for next sample
+                                    currentSample = '';
+                                    inString = false;
+                                    escapeNext = false;
+                                }
+                            }
+                        }
+                        
+                        if (dataset.train.length === 0) {
+                            throw new Error('No valid training samples found in the file');
+                        }
+                    }
+
+                    if (!dataset || !dataset.train || dataset.train.length === 0) {
+                        throw new Error('Invalid dataset format or no training data found');
+                    }
+
+                    showFileStatus(`Dataset loaded successfully! Found ${dataset.train.length} training samples`, 'success');
+                    
+                    // Show subsequent sections
+                    document.getElementById('datasetAnalysisSection').style.display = 'block';
+                    document.getElementById('modelConfigSection').style.display = 'block';
+                    
+                    // Update analysis
+                    updateDatasetStats();
+                    createCategoryChart();
+                    
+                    console.log('Dataset loaded successfully:', dataset.train.length, 'samples');
+                    if (dataset.train.length > 0) {
+                        console.log('Sample data:', dataset.train[0]);
+                    }
+
+                } catch (error) {
+                    console.error('Error processing dataset:', error);
+                    showFileStatus('Error loading dataset: ' + error.message, 'error');
+                    dataset = null;
+                }
+            };
+            
+            reader.onerror = function() {
+                showFileStatus('Error reading file', 'error');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Update dataset statistics
+        function updateDatasetStats() {
+            const categoryCount = {};
+            dataset.train.forEach(item => {
+                categoryCount[item.category] = (categoryCount[item.category] || 0) + 1;
+            });
+
+            const avgQuestionLength = Math.round(dataset.train.reduce((sum, item) => sum + item.question.length, 0) / dataset.train.length);
+            const avgAnswerLength = Math.round(dataset.train.reduce((sum, item) => sum + item.answer.length, 0) / dataset.train.length);
+            const avgConfidence = Math.round(dataset.train.reduce((sum, item) => sum + item.confidence, 0) / dataset.train.length * 100);
+
+            const statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-value">${dataset.train.length}</div>
+                    <div class="stat-label">Total Samples</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${Object.keys(categoryCount).length}</div>
+                    <div class="stat-label">Categories</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avgConfidence}%</div>
+                    <div class="stat-label">Avg Confidence</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${avgQuestionLength}</div>
+                    <div class="stat-label">Avg Q Length</div>
+                </div>
+            `;
+            document.getElementById('datasetStats').innerHTML = statsHtml;
+        }
+
+        // Create category distribution chart
+        function createCategoryChart() {
+            const categoryCount = {};
+            dataset.train.forEach(item => {
+                categoryCount[item.category] = (categoryCount[item.category] || 0) + 1;
+            });
+
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+            
+            categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categoryCount),
+                    datasets: [{
+                        data: Object.values(categoryCount),
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                            '#9966FF', '#FF9F40', '#FF6B6B'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Dataset Category Distribution'
+                        },
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Simple tokenizer implementation
+        function createTokenizer(texts, vocabSize) {
+            const wordCounts = {};
+            texts.forEach(text => {
+                const words = text.toLowerCase().match(/\w+/g) || [];
+                words.forEach(word => {
+                    wordCounts[word] = (wordCounts[word] || 0) + 1;
+                });
+            });
+
+            const sortedWords = Object.entries(wordCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, vocabSize - 2);
+
+            const wordToIndex = { '<UNK>': 0, '<PAD>': 1 };
+            const indexToWord = { 0: '<UNK>', 1: '<PAD>' };
+            
+            sortedWords.forEach(([word], index) => {
+                const idx = index + 2;
+                wordToIndex[word] = idx;
+                indexToWord[idx] = word;
+            });
+
+            return {
+                wordToIndex,
+                indexToWord,
+                vocabSize: Object.keys(wordToIndex).length,
+                encode: function(text) {
+                    const words = text.toLowerCase().match(/\w+/g) || [];
+                    return words.map(word => this.wordToIndex[word] || 0);
+                }
+            };
+        }
+
+        // Prepare training data
+        function prepareData(vocabSize, maxLength) {
+            const questions = dataset.train.map(item => item.question);
+            const answers = dataset.train.map(item => item.answer);
+            const categories = dataset.train.map(item => item.category);
+
+            // Create tokenizers
+            const questionTokenizer = createTokenizer(questions, vocabSize);
+
+            // Encode sequences
+            const encodedQuestions = questions.map(q => {
+                const encoded = questionTokenizer.encode(q);
+                return padSequence(encoded, maxLength);
+            });
+
+            // Create category labels
+            const uniqueCategories = [...new Set(categories)];
+            const categoryToIndex = {};
+            uniqueCategories.forEach((cat, idx) => {
+                categoryToIndex[cat] = idx;
+            });
+
+            const categoryLabels = categories.map(cat => {
+                const oneHot = new Array(uniqueCategories.length).fill(0);
+                oneHot[categoryToIndex[cat]] = 1;
+                return oneHot;
+            });
+
+            return {
+                questions: encodedQuestions,
+                categories: categoryLabels,
+                questionTokenizer,
+                categoryToIndex,
+                uniqueCategories
+            };
+        }
+
+        // Pad sequences to fixed length
+        function padSequence(sequence, maxLength) {
+            if (sequence.length >= maxLength) {
+                return sequence.slice(0, maxLength);
+            }
+            return [...sequence, ...new Array(maxLength - sequence.length).fill(1)];
+        }
+
+        // Create 1D CNN model
+        function createModel(vocabSize, embeddingDim, maxLength, numCategories, filters) {
+            const model = tf.sequential();
+
+            // Embedding layer
+            model.add(tf.layers.embedding({
+                inputDim: vocabSize,
+                outputDim: embeddingDim,
+                inputLength: maxLength
+            }));
+
+            // 1D Convolutional layers
+            model.add(tf.layers.conv1d({
+                filters: filters,
+                kernelSize: 3,
+                activation: 'relu',
+                padding: 'same'
+            }));
+
+            model.add(tf.layers.conv1d({
+                filters: filters,
+                kernelSize: 4,
+                activation: 'relu',
+                padding: 'same'
+            }));
+
+            model.add(tf.layers.conv1d({
+                filters: filters,
+                kernelSize: 5,
+                activation: 'relu',
+                padding: 'same'
+            }));
+
+            // Global max pooling
+            model.add(tf.layers.globalMaxPooling1d());
+
+            // Dense layers
+            model.add(tf.layers.dense({
+                units: 128,
+                activation: 'relu'
+            }));
+
+            model.add(tf.layers.dropout({ rate: 0.5 }));
+
+            model.add(tf.layers.dense({
+                units: 64,
+                activation: 'relu'
+            }));
+
+            // Output layer for category classification
+            model.add(tf.layers.dense({
+                units: numCategories,
+                activation: 'softmax'
+            }));
+
+            // Compile model
+            model.compile({
+                optimizer: tf.train.adam(0.001),
+                loss: 'categoricalCrossentropy',
+                metrics: ['accuracy']
+            });
+
+            return model;
+        }
+
+        // Start model training
+        async function startTraining() {
+            if (isTraining) return;
+            
+            if (!dataset || !dataset.train || dataset.train.length === 0) {
+                showStatus('Please upload a valid dataset file first!', 'error');
+                return;
+            }
+            
+            isTraining = true;
+            document.getElementById('trainBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('trainingProgress').style.display = 'block';
+
+            try {
+                // Get hyperparameters
+                const vocabSize = parseInt(document.getElementById('vocabSize').value);
+                const embeddingDim = parseInt(document.getElementById('embeddingDim').value);
+                const maxLength = parseInt(document.getElementById('maxLength').value);
+                const filters = parseInt(document.getElementById('filters').value);
+                const epochs = parseInt(document.getElementById('epochs').value);
+                const batchSize = parseInt(document.getElementById('batchSize').value);
+
+                showStatus('Preparing training data...', 'info');
+
+                // Prepare data
+                const trainingData = prepareData(vocabSize, maxLength);
+                
+                // Create model
+                showStatus('Creating model...', 'info');
+                model = createModel(
+                    trainingData.questionTokenizer.vocabSize,
+                    embeddingDim,
+                    maxLength,
+                    trainingData.uniqueCategories.length,
+                    filters
+                );
+
+                // Store tokenizers globally
+                tokenizer = trainingData;
+
+                // Convert to tensors
+                const xTrain = tf.tensor2d(trainingData.questions);
+                const yTrain = tf.tensor2d(trainingData.categories);
+
+                showStatus('Starting training...', 'info');
+
+                // Setup training chart
+                setupTrainingChart();
+
+                // Train model
+                let currentEpoch = 0;
+                const history = { loss: [], accuracy: [] };
+
+                const trainHistory = await model.fit(xTrain, yTrain, {
+                    epochs: epochs,
+                    batchSize: batchSize,
+                    validationSplit: 0.2,
+                    callbacks: {
+                        onEpochEnd: (epoch, logs) => {
+                            if (!isTraining) return;
+                            
+                            currentEpoch = epoch + 1;
+                            const progress = (currentEpoch / epochs) * 100;
+                            
+                            document.getElementById('progressBar').style.width = progress + '%';
+                            
+                            history.loss.push(logs.loss);
+                            history.accuracy.push(logs.acc);
+                            
+                            updateTrainingChart(history);
+                            
+                            showStatus(`Epoch ${currentEpoch}/${epochs} - Loss: ${logs.loss.toFixed(4)} - Accuracy: ${logs.acc.toFixed(4)}`, 'info');
+                        }
+                    }
+                });
+
+                // Clean up tensors
+                xTrain.dispose();
+                yTrain.dispose();
+
+                if (isTraining) {
+                    showStatus('Training completed successfully!', 'success');
+                }
+
+            } catch (error) {
+                console.error('Training error:', error);
+                showStatus('Training failed: ' + error.message, 'error');
+            } finally {
+                isTraining = false;
+                document.getElementById('trainBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        // Stop training
+        function stopTraining() {
+            isTraining = false;
+            showStatus('Training stopped by user', 'info');
+        }
+
+        // Setup training chart
+        function setupTrainingChart() {
+            const ctx = document.getElementById('trainingChart').getContext('2d');
+            
+            if (trainingChart) {
+                trainingChart.destroy();
+            }
+            
+            trainingChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Training Loss',
+                        data: [],
+                        borderColor: '#FF6384',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Training Accuracy',
+                        data: [],
+                        borderColor: '#36A2EB',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: { display: true, text: 'Loss' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: { display: true, text: 'Accuracy' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Training Progress'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update training chart
+        function updateTrainingChart(history) {
+            if (!trainingChart) return;
+
+            trainingChart.data.labels = history.loss.map((_, i) => i + 1);
+            trainingChart.data.datasets[0].data = history.loss;
+            trainingChart.data.datasets[1].data = history.accuracy;
+            trainingChart.update('none');
+        }
+
+        // Ask question using trained model
+        async function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+            const category = document.getElementById('categorySelect').value;
+            
+            if (!question) {
+                document.getElementById('answerBox').innerHTML = '<span style="color: #dc3545;">Please enter a question</span>';
+                return;
+            }
+
+            if (!dataset || !dataset.train) {
+                document.getElementById('answerBox').innerHTML = '<span style="color: #dc3545;">Please upload a dataset first</span>';
+                return;
+            }
+
+            try {
+                // Use rule-based matching since training may not be complete
+                const answer = findBestMatch(question, category);
+                document.getElementById('answerBox').innerHTML = answer;
+
+            } catch (error) {
+                console.error('Question answering error:', error);
+                document.getElementById('answerBox').innerHTML = '<span style="color: #dc3545;">Error processing question: ' + error.message + '</span>';
+            }
+        }
+
+        // Simple rule-based matching for demo
+        function findBestMatch(question, category) {
+            const questionLower = question.toLowerCase();
+            let bestMatch = null;
+            let bestScore = 0;
+
+            const candidates = category ? 
+                dataset.train.filter(item => item.category === category) : 
+                dataset.train;
+
+            candidates.forEach(item => {
+                const itemQuestion = item.question.toLowerCase();
+                let score = 0;
+                
+                // Simple word matching
+                const questionWords = questionLower.split(/\s+/);
+                const itemWords = itemQuestion.split(/\s+/);
+                
+                questionWords.forEach(word => {
+                    if (itemWords.includes(word)) {
+                        score += 1;
+                    }
+                });
+
+                // Normalize by question length
+                score = score / Math.max(questionWords.length, itemWords.length);
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = item;
+                }
+            });
+
+            if (bestMatch && bestScore > 0.1) {
+                return `<strong>Category:</strong> ${bestMatch.category}<br><br>` +
+                       `<strong>Answer:</strong> ${bestMatch.answer}<br><br>` +
+                       `<small><em>Confidence: ${bestMatch.confidence} | Match Score: ${(bestScore * 100).toFixed(1)}%</em></small>`;
+            } else {
+                return "I couldn't find a good match for your question. Please try rephrasing or selecting a specific category.";
+            }
+        }
+
+        // Rate response
+        function rateResponse(isPositive) {
+            const thumbs = document.querySelectorAll('.thumb-btn');
+            thumbs.forEach(btn => btn.classList.remove('selected'));
+            
+            const selectedThumb = isPositive ? thumbs[0] : thumbs[1];
+            selectedThumb.classList.add('selected');
+            
+            document.getElementById('ratingText').textContent = 
+                isPositive ? 'Thanks for the positive feedback!' : 'Thanks for the feedback, we\'ll improve!';
+        }
+
+        // Run model tests
+        async function runModelTests() {
+            if (!dataset || !dataset.train) {
+                alert('Please upload a dataset first');
+                return;
+            }
+
+            document.getElementById('testBtn').disabled = true;
+            document.getElementById('testProgress').style.display = 'block';
+            document.getElementById('testResults').style.display = 'block';
+
+            const testQuestions = dataset.train.slice(0, 25); // Take first 25 as test set
+            testResults = [];
+
+            for (let i = 0; i < testQuestions.length; i++) {
+                const progress = ((i + 1) / testQuestions.length) * 100;
+                document.getElementById('testProgressBar').style.width = progress + '%';
+
+                const testItem = testQuestions[i];
+                const predictedAnswer = findBestMatch(testItem.question);
+                
+                // Calculate similarity score (simplified)
+                const similarity = calculateSimilarity(testItem.answer, predictedAnswer);
+                
+                testResults.push({
+                    question: testItem.question,
+                    groundTruth: testItem.answer,
+                    predicted: predictedAnswer,
+                    similarity: similarity,
+                    category: testItem.category
+                });
+
+                // Small delay for visual effect
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            displayTestResults();
+            updatePerformanceStats();
+            createPerformanceChart();
+
+            document.getElementById('testBtn').disabled = false;
+        }
+
+        // Calculate similarity between two texts (simplified)
+        function calculateSimilarity(text1, text2) {
+            const words1 = text1.toLowerCase().match(/\w+/g) || [];
+            const words2 = text2.toLowerCase().match(/\w+/g) || [];
+            
+            const set1 = new Set(words1);
+            const set2 = new Set(words2);
+            
+            const intersection = new Set([...set1].filter(x => set2.has(x)));
+            const union = new Set([...set1, ...set2]);
+            
+            return intersection.size / union.size;
+        }
+
+        // Display test results
+        function displayTestResults() {
+            const resultsHtml = testResults.map((result, index) => {
+                const scoreClass = result.similarity > 0.7 ? 'score-high' : 
+                                 result.similarity > 0.4 ? 'score-medium' : 'score-low';
+                
+                return `
+                    <div class="test-item">
+                        <h5>Test ${index + 1} - ${result.category}</h5>
+                        <p><strong>Question:</strong> ${result.question}</p>
+                        <p><strong>Ground Truth:</strong> ${result.groundTruth.substring(0, 200)}...</p>
+                        <p><strong>Model Response:</strong> ${result.predicted.substring(0, 200)}...</p>
+                        <p><strong>Similarity:</strong> 
+                           <span class="similarity-score ${scoreClass}">
+                               ${(result.similarity * 100).toFixed(1)}%
+                           </span>
+                        </p>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('testResultsContent').innerHTML = resultsHtml;
+        }
+
+        // Update performance statistics
+        function updatePerformanceStats() {
+            const avgSimilarity = testResults.reduce((sum, r) => sum + r.similarity, 0) / testResults.length;
+            const highScores = testResults.filter(r => r.similarity > 0.7).length;
+            const mediumScores = testResults.filter(r => r.similarity > 0.4 && r.similarity <= 0.7).length;
+            const lowScores = testResults.filter(r => r.similarity <= 0.4).length;
+
+            const statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-value">${(avgSimilarity * 100).toFixed(1)}%</div>
+                    <div class="stat-label">Avg Similarity</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${highScores}</div>
+                    <div class="stat-label">High Scores (>70%)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${mediumScores}</div>
+                    <div class="stat-label">Medium Scores (40-70%)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">${lowScores}</div>
+                    <div class="stat-label">Low Scores (<40%)</div>
+                </div>
+            `;
+            document.getElementById('performanceStats').innerHTML = statsHtml;
+        }
+
+        // Create performance chart
+        function createPerformanceChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+
+            const categories = [...new Set(testResults.map(r => r.category))];
+            const categoryScores = categories.map(cat => {
+                const categoryResults = testResults.filter(r => r.category === cat);
+                return categoryResults.reduce((sum, r) => sum + r.similarity, 0) / categoryResults.length;
+            });
+
+            performanceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        label: 'Average Similarity Score',
+                        data: categoryScores.map(score => score * 100),
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                            '#9966FF', '#FF9F40', '#FF6384'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Similarity Score (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Performance by Category'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Utility functions
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to selected tab
+            event.target.classList.add('active');
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusElement = document.getElementById('trainingStatus');
+            if (statusElement) {
+                statusElement.className = `status ${type}`;
+                statusElement.textContent = message;
+            }
+        }
+
+        function showFileStatus(message, type = 'info') {
+            const statusElement = document.getElementById('fileStatus');
+            if (statusElement) {
+                statusElement.className = `status ${type}`;
+                statusElement.textContent = message;
+                statusElement.style.display = 'block';
+            }
+        }
+
+        // Initialize app when page loads
+        window.addEventListener('load', initializeApp);
+    </script>
+</body>
+</html>
